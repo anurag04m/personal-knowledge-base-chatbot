@@ -24,13 +24,9 @@ def load_documents():
 
 
 def split_documents(documents):
-
-    for doc in documents:
-        doc.page_content = doc.page_content.replace("\n", " ")
-
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1100,
-        chunk_overlap=200,
+        chunk_size=500,
+        chunk_overlap=100,
         length_function=len
     )
 
