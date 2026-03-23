@@ -1,4 +1,3 @@
-
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 import ollama
@@ -20,7 +19,7 @@ def load_vectorstore():
     return vectorstore
 
 
-def retrieve_context(vectorstore, query, k=4):
+def retrieve_context(vectorstore, query, k=6):
     docs = vectorstore.similarity_search(query, k=k)
 
     context = "\n\n".join([doc.page_content for doc in docs])
@@ -29,16 +28,26 @@ def retrieve_context(vectorstore, query, k=4):
 
 
 def ask_llama(context, question):
+
     prompt = f"""
-You are answering questions using the provided context.
+You are a question-answering assistant.
+
+Use ONLY the information provided in the context below to answer the question.
+
+If the answer cannot be found in the context, say:
+"I cannot find the answer in the provided document."
+
+Be concise and clear.
 
 Context:
+----------------------
 {context}
+----------------------
 
 Question:
 {question}
 
-Answer the question based only on the context above.
+Answer:
 """
 
     response = ollama.chat(
@@ -62,6 +71,8 @@ def main():
             break
 
         context = retrieve_context(vectorstore, question)
+
+        print("\nRetrieved context:\n", context[:500])
 
         answer = ask_llama(context, question)
 
