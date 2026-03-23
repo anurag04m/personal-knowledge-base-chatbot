@@ -1,11 +1,15 @@
+
 from langchain_community.document_loaders import PyPDFLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain.embeddings import HuggingFaceEmbeddings
 import os
 
-DATA_PATH = "data"
-VECTOR_DB_PATH = "vectorstore"
+# Path to PDF folder
+DATA_PATH = "backend/data"
+
+# Path to save vector database
+VECTOR_DB_PATH = "backend/vectorstore"
 
 
 def load_documents():
@@ -13,40 +17,24 @@ def load_documents():
 
     for file in os.listdir(DATA_PATH):
         if file.endswith(".pdf"):
-            path = os.path.join(DATA_PATH, file)
-            loader = PyPDFLoader(path)
-            docs = loader.load()
-
-            print(f"Loaded {len(docs)} pages from {file}")
-            documents.extend(docs)
+            loader = PyPDFLoader(os.path.join(DATA_PATH, file))
+            documents.extend(loader.load())
 
     return documents
 
 
 def split_documents(documents):
-
-    for doc in documents:
-        doc.page_content = doc.page_content.replace("\n", " ")
-
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1100,
-        chunk_overlap=200,
-        length_function=len
+        chunk_size=400,
+        chunk_overlap=80
     )
 
-    chunks = text_splitter.split_documents(documents)
-
-    print(f"Total chunks created: {len(chunks)}")
-
-    return chunks
+    return text_splitter.split_documents(documents)
 
 
 def create_vectorstore(chunks):
-
     embeddings = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2",
-        model_kwargs={"device": "cpu"},
-        encode_kwargs={"batch_size": 32}
+        model_name="sentence-transformers/all-MiniLM-L6-v2"
     )
 
     vectorstore = FAISS.from_documents(chunks, embeddings)
@@ -72,3 +60,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+	
