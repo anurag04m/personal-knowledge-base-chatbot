@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Personal Knowledge Base Chatbot interface for uploading notes and querying via RAG.">
+    <title>Knowledge Chatbot</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">
+                <i class="fa-solid fa-brain"></i>
+                <h1>BrainBox AI</h1>
+            </div>
+            <div class="status-indicator" id="header-status">
+                <span class="dot"></span>
+                <span class="text">Waiting for documents</span>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            
+            <!-- 1. Upload View -->
+            <section id="upload-view" class="view active">
+                <div class="upload-container">
+                    <div class="upload-box" id="drop-zone">
+                        <i class="fa-solid fa-cloud-arrow-up upload-icon"></i>
+                        <h2>Upload your Knowledge Base</h2>
+                        <p>Drag and drop a PDF file here, or click to browse</p>
+                        <input type="file" id="file-input" accept=".pdf" hidden>
+                        <button class="btn primary-btn" id="browse-btn">Browse Files</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. Processing View -->
+            <section id="processing-view" class="view hidden">
+                <div class="processing-container">
+                    <div class="loader-circle"></div>
+                    <h2 id="process-title">Running ingest.py...</h2>
+                    <p id="process-subtitle">Extracting text and building vector embeddings</p>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="progress-fill"></div>
+                    </div>
+                    <div class="terminal-mock">
+                        <div class="terminal-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                        </div>
+                        <div class="terminal-body" id="terminal-logs">
+                            <div>> Initializing pipeline...</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. Chat View -->
+            <section id="chat-view" class="view hidden">
+                <div class="chat-container">
+                    <div class="chat-history" id="chat-history">
+                        <div class="message bot-message">
+                            <div class="avatar"><i class="fa-solid fa-robot"></i></div>
+                            <div class="bubble">
+                                Hello! I have processed your document. You can now ask me any questions about it!
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chat-input-area">
+                        <div class="input-wrapper">
+                            <input type="text" id="chat-input" placeholder="Ask a question about your documents..." autocomplete="off">
+                            <button id="send-btn" class="send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
