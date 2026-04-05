@@ -81,56 +81,59 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         // Start Processing Flow
-        startProcessing(file.name);
+        startProcessing(file);
     };
 
-    // --- 2. Processing (Mock) Logic ---
-    const startProcessing = (filename) => {
+    // --- 2. Processing (Actual) Logic ---
+    const startProcessing = async (file) => {
         switchView('processing');
         headerStatus.classList.add('processing');
         statusText.textContent = 'Processing Document...';
 
-        const logs = [
-            `> Found document: ${filename}`,
-            `> Executing ingest.py...`,
-            `> Extracting PDF content...`,
-            `> Chunking text (Chunk size: 1000)...`,
-            `> Generating vector embeddings via SentenceTransformers...`,
-            `> Indexing into vector database...`,
-            `> Ingestion complete!`,
-            `> Starting ragchat.py engine...`,
-            `> Loading LLM context...`,
-            `> System ready.`
-        ];
-
-        let currentLogIndex = 0;
         terminalLogs.innerHTML = ''; // clear initial log
         
-        const logInterval = setInterval(() => {
-            if(currentLogIndex < logs.length) {
-                const logEl = document.createElement('div');
-                logEl.textContent = logs[currentLogIndex];
-                terminalLogs.appendChild(logEl);
+        const logEl = document.createElement('div');
+        logEl.textContent = `> Uploading and ingesting ${file.name}... (This may take a minute)`;
+        terminalLogs.appendChild(logEl);
+
+        // Update progress bar to show activity
+        progressFill.style.width = '50%';
+        processTitle.textContent = 'Processing...';
+        processSubtitle.textContent = 'Generating vector embeddings and ingesting data';
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch('http://localhost:5000/upload', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            
+            if(response.ok) {
+                const successEl = document.createElement('div');
+                successEl.textContent = `> ✅ ${data.message}`;
+                terminalLogs.appendChild(successEl);
                 terminalLogs.scrollTop = terminalLogs.scrollHeight;
                 
-                // Update Progress bar roughly based on index
-                const progressPct = ((currentLogIndex + 1) / logs.length) * 100;
-                progressFill.style.width = `${progressPct}%`;
-
-                // At halfway, switch to ragchat title
-                if (currentLogIndex === 7) {
-                    processTitle.textContent = 'Starting ragchat.py...';
-                    processSubtitle.textContent = 'Initalizing retrieval-augmented generation engine';
-                }
-
-                currentLogIndex++;
-            } else {
-                clearInterval(logInterval);
+                progressFill.style.width = '100%';
+                
                 setTimeout(() => {
                     finishProcessing();
                 }, 1000); // 1s pause before switching to chat
+            } else {
+                alert('Upload failed: ' + data.error);
+                switchView('upload');
+                headerStatus.classList.remove('processing');
+                statusText.textContent = 'Upload Document';
             }
-        }, 800); // 800ms between mock logs
+        } catch (error) {
+            alert('Connection to server failed. Ensure backend runs on port 5000.');
+            switchView('upload');
+            headerStatus.classList.remove('processing');
+            statusText.textContent = 'Upload Document';
+        }
     };
 
     const finishProcessing = () => {
