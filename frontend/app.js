@@ -147,13 +147,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- 3. Chat Logic (Mock) ---
-    const addMessage = (text, sender) => {
+    const addMessage = (text, sender, sources = []) => {
         const msgDiv = document.createElement('div');
         msgDiv.className = `message ${sender}-message`;
         
         // Create avatar based on sender
         const avatarIcon = sender === 'bot' ? '<i class="fa-solid fa-robot"></i>' : '<i class="fa-solid fa-user"></i>';
         
+        const bubbleContainer = document.createElement('div');
+        bubbleContainer.style.display = 'flex';
+        bubbleContainer.style.flexDirection = 'column';
+        bubbleContainer.style.gap = '8px';
+
         const bubbleContent = document.createElement('div');
         bubbleContent.className = 'bubble markdown-body';
         
@@ -163,8 +168,17 @@ document.addEventListener('DOMContentLoaded', () => {
             bubbleContent.textContent = text;
         }
 
+        bubbleContainer.appendChild(bubbleContent);
+
+        if (sender === 'bot' && sources && sources.length > 0) {
+            const sourcesDiv = document.createElement('div');
+            sourcesDiv.className = 'sources-badge';
+            sourcesDiv.innerHTML = `<i class="fa-solid fa-book-open"></i> Sources: Page(s) ${sources.join(', ')}`;
+            bubbleContainer.appendChild(sourcesDiv);
+        }
+
         msgDiv.innerHTML = `<div class="avatar">${avatarIcon}</div>`;
-        msgDiv.appendChild(bubbleContent);
+        msgDiv.appendChild(bubbleContainer);
 
         chatHistory.appendChild(msgDiv);
         chatHistory.scrollTop = chatHistory.scrollHeight;
@@ -212,7 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             if (response.ok) {
-                addMessage(data.answer, 'bot');
+                addMessage(data.answer, 'bot', data.sources);
             } else {
                 addMessage("Error: " + data.error, 'bot');
             }
