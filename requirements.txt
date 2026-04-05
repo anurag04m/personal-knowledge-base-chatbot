@@ -7,3 +7,5 @@ sentence-transformers
 pypdf
 ollama
 torch
+Flask
+Flask-CORS
