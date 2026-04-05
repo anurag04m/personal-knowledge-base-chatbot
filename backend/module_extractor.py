@@ -141,6 +141,14 @@ def is_likely_topic(line: str) -> bool:
         return False
     if SENTENCE_RE.search(clean):
         return False
+    if re.search(r"\bpage\s+\d+\b", clean, re.IGNORECASE):
+        return False
+    if re.search(r"[=→]", clean):  # equations / arrows
+        return False
+    if re.search(r"\b[Pp]\d+\b", clean):  # P0, P1 etc (tables)
+        return False
+    if re.search(r"\b\d+\b", clean) and len(clean.split()) <= 4:
+        return False  # short numeric-heavy lines
 
     words = clean.split()
     if not (TOPIC_MIN_WORDS <= len(words) <= TOPIC_MAX_WORDS):
@@ -148,7 +156,7 @@ def is_likely_topic(line: str) -> bool:
 
     # Casing check: title-case, ALL-CAPS, or starts with a number (numbered list)
     is_title = clean.istitle()
-    is_upper = clean.isupper()
+    is_upper = clean.isupper() and len(clean.split()) <= 6
     starts_numbered = re.match(r"^\d+[\.\)]\s+\S", clean)
     has_bullet = bool(BULLET_RE.match(line))
 
