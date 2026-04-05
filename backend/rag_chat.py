@@ -54,7 +54,6 @@ from typing import Optional
 
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
-from rank_bm25 import BM25Okapi
 import ollama
 
 from module_extractor import load_module_topics
@@ -128,6 +127,7 @@ def retrieve_context(vectorstore, bm25, all_docs, question: str, k: int = 6):
             except Exception:
                 pass
 
+    # sort by similarity score (lower score = better match)
     scored_docs.sort(key=lambda x: x[1])
     vector_docs = [doc for doc, _ in scored_docs[:k]]
 
@@ -311,7 +311,7 @@ def rewrite_question(question: str) -> str:
 def ask_llama(context: str, question: str) -> str:
     prompt = f"""You are a helpful assistant answering questions about a document.
 
-Use ONLY the information provided in the context.
+Use ONLY the information provided in the context below.
 Do NOT use outside knowledge.
 
 If and ONLY IF the question explicitly asks about modules, units, chapters, or topics (e.g., "list topics", "what does module X cover"):
@@ -474,3 +474,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+	
