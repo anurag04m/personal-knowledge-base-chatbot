@@ -113,6 +113,16 @@ def upload_file():
         
         # Trigger processing (re-ingests the data folder)
         try:
+            # Release any file locks held by the old FAISS index on Windows
+            rag_models["vectorstore"] = None
+            rag_models["bm25"] = None
+            rag_models["all_docs"] = None
+            rag_models["module_topics"] = None
+            rag_models["initialized"] = False
+            
+            import gc
+            gc.collect()
+
             ingest_main(use_llm=False)
             return jsonify({"status": "Success", "message": f"File {filename} uploaded and processed."}), 200
         except Exception as e:

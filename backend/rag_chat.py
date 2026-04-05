@@ -55,12 +55,21 @@ from typing import Optional
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 import ollama
+from rank_bm25 import BM25Okapi
 
-from module_extractor import load_module_topics
-from query_router import route_query, is_followup
+import os
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-VECTOR_DB_PATH = "vectorstore"
-MODULE_TOPICS_PATH = "module_topics.json"
+# Fix relative imports
+try:
+    from backend.module_extractor import load_module_topics
+    from backend.query_router import route_query, is_followup
+except ImportError:
+    from module_extractor import load_module_topics
+    from query_router import route_query, is_followup
+
+VECTOR_DB_PATH = os.path.join(BASE_DIR, "vectorstore")
+MODULE_TOPICS_PATH = os.path.join(BASE_DIR, "module_topics.json")
 
 # ─── Context cache for follow-up reuse ───────────────────────────────────────
 _cache: dict = {"context": None, "pages": None}
@@ -356,8 +365,7 @@ Answer:"""
     response = ollama.chat(
         model="llama3",
         messages=messages,
-        stream=True,
-        options={"num_predict": 150}
+        stream=True
     )
 
     answer = ""

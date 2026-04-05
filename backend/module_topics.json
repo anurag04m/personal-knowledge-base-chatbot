@@ -1,0 +1,36 @@
+{
+  "Module-II": [
+    "Resource-Allocation Graph",
+    "One instance of resource type R1",
+    "Two instances of resource type R2",
+    "One instance of resource type R3",
+    "Three instances of resource type R4",
+    "Resource-Allocation Graph Algorithm",
+    "Safety Algorithm",
+    "Resource-Request Algorithm",
+    "An algorithm to recover from the deadlock.",
+    "Process Termination",
+    "Resource Preemption",
+    "Logical- Versus Physical-Address Space",
+    "Dynamic Loading",
+    "Dynamic Linking",
+    "Two-Level Page-Table Scheme:",
+    "Shared Pages",
+    "Page Table:",
+    "Global Versus Local Allocation"
+  ],
+  "Module-III": [
+    "File Attributes:",
+    "File Operations:",
+    "Disk Formatting",
+    "Boot Block",
+    "Bad Blocks",
+    "SWAP-SPACE MANAGEMENT",
+    "Swap-Space Use",
+    "Swap-Space Location",
+    "I/O SYSTEM",
+    "Direct Memory Access",
+    "APPLICATION I/O INTERFACE",
+    "KERNEL I/O SUBSYSTEM"
+  ]
+}
