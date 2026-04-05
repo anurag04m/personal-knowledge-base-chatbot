@@ -152,10 +152,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // Create avatar based on sender
         const avatarIcon = sender === 'bot' ? '<i class="fa-solid fa-robot"></i>' : '<i class="fa-solid fa-user"></i>';
         
-        // Use marked/markdown parsing if real app, just safe text content here
         const bubbleContent = document.createElement('div');
-        bubbleContent.className = 'bubble';
-        bubbleContent.textContent = text; // helps prevent XSS too
+        bubbleContent.className = 'bubble markdown-body';
+        
+        if (sender === 'bot') {
+            bubbleContent.innerHTML = marked.parse(text);
+        } else {
+            bubbleContent.textContent = text;
+        }
 
         msgDiv.innerHTML = `<div class="avatar">${avatarIcon}</div>`;
         msgDiv.appendChild(bubbleContent);
