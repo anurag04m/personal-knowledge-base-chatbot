@@ -149,6 +149,18 @@ def is_likely_topic(line: str) -> bool:
         return False
     if re.search(r"\b\d+\b", clean) and len(clean.split()) <= 4:
         return False  # short numeric-heavy lines
+    # ❌ Filter long descriptive lines (likely sentences)
+    if len(clean.split()) > 8:
+        return False
+    # ❌ Filter lines containing common verbs (not headings)
+    if re.search(r"\b(is|are|was|were|be|being|been|have|has|had|can|could|should|will|would)\b", clean, re.IGNORECASE):
+        return False
+    # ❌ Lines with colon followed by long explanation
+    if ":" in clean and len(clean.split()) > 6:
+        return False
+    # ❌ Table-like rows (A B C etc.)
+    if re.fullmatch(r"[A-Z\s]{3,}", clean):
+        return False
 
     words = clean.split()
     if not (TOPIC_MIN_WORDS <= len(words) <= TOPIC_MAX_WORDS):
@@ -156,7 +168,7 @@ def is_likely_topic(line: str) -> bool:
 
     # Casing check: title-case, ALL-CAPS, or starts with a number (numbered list)
     is_title = clean.istitle()
-    is_upper = clean.isupper() and len(clean.split()) <= 6
+    is_upper = clean.isupper() and 2 <= len(clean.split()) <= 5
     starts_numbered = re.match(r"^\d+[\.\)]\s+\S", clean)
     has_bullet = bool(BULLET_RE.match(line))
 
