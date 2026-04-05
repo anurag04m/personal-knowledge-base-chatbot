@@ -164,7 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chatHistory.scrollTop = chatHistory.scrollHeight;
     };
 
-    const handleSend = () => {
+    const handleSend = async () => {
         const text = chatInput.value.trim();
         if (!text) return;
 
@@ -190,26 +190,32 @@ document.addEventListener('DOMContentLoaded', () => {
         chatHistory.appendChild(typingDiv);
         chatHistory.scrollTop = chatHistory.scrollHeight;
 
-        // Mock bot response
-        setTimeout(() => {
+        try {
+            const response = await fetch('http://localhost:5000/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ query: text })
+            });
+            const data = await response.json();
+            
             const typingEl = document.getElementById(typingId);
             if (typingEl) {
                 typingEl.remove();
             }
-            // Generate a fake but relevant-sounding response
-            const response = generateMockResponse(text);
-            addMessage(response, 'bot');
-        }, 1500 + Math.random() * 1500); // Random delay between 1.5s - 3s
-    };
-
-    const generateMockResponse = (query) => {
-        const lowerQ = query.toLowerCase();
-        if (lowerQ.includes("who") || lowerQ.includes("what")) {
-            return `Based on the document context, that specific detail highlights the core principles discussed. Specifically, the text notes the importance of structured reasoning across modules.`;
-        } else if (lowerQ.includes("summarize") || lowerQ.includes("summary")) {
-             return `The overall summary of the document points to three main things: 1. Effective utilization of vector embeddings. 2. Scalable RAG structures. 3. End-to-end reliability.`;
-        } else {
-             return `Indeed. According to the uploaded knowledge base, the system extracts related snippets using a similarity search, and processes your query to provide this accurate synthesis.`;
+            
+            if (response.ok) {
+                addMessage(data.answer, 'bot');
+            } else {
+                addMessage("Error: " + data.error, 'bot');
+            }
+        } catch (error) {
+            const typingEl = document.getElementById(typingId);
+            if (typingEl) {
+                typingEl.remove();
+            }
+            addMessage("Error connecting to the backend server.", 'bot');
         }
     };
 
