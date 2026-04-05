@@ -84,8 +84,8 @@ ollama serve
 
 ```bash
 # 1. Clone or download the project
-git clone https://github.com/yourname/brainbox-ai.git
-cd brainbox-ai
+git clone https://github.com/anurag04m/personal-knowledge-base-chatbot.git
+cd personal-knowledge-base-chatbot
 
 # 2. Create and activate a virtual environment
 python -m venv venv
