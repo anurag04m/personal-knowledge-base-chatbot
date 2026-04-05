@@ -86,6 +86,19 @@ def tokenize(text: str) -> list[str]:
     return re.sub(r"[^a-z0-9 ]", " ", text.lower()).split()
 
 
+def rerank_docs(question: str, docs: list):
+    q_words = set(tokenize(question))
+    scored = []
+
+    for doc in docs:
+        doc_words = set(tokenize(doc.page_content))
+        overlap = len(q_words & doc_words)
+        scored.append((overlap, doc))
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [doc for _, doc in scored]
+
+
 def build_bm25_index(vectorstore):
     docs = list(vectorstore.docstore._dict.values())
     corpus = [d.page_content for d in docs if len(d.page_content.strip()) > 40]
@@ -134,7 +147,7 @@ def retrieve_context(vectorstore, bm25, all_docs, question: str, k: int = 6):
             unique_docs.append(doc)
             seen.add(doc.page_content)
 
-    top_docs = unique_docs[:k]
+    top_docs = rerank_docs(question, unique_docs)[:k]
 
     # ── Neighbour expansion ──────────────────────────────────────────────────
     expanded: dict[str, object] = {}
@@ -152,6 +165,17 @@ def retrieve_context(vectorstore, bm25, all_docs, question: str, k: int = 6):
             pass
 
     final_docs = list(expanded.values())[:k]
+
+    filtered_docs = []
+    seen = set()
+
+    for doc in final_docs:
+        text = doc.page_content[:200]  # first 200 chars as signature
+        if text not in seen:
+            filtered_docs.append(doc)
+            seen.add(text)
+
+    final_docs = filtered_docs
 
     context = "".join(
         f"Chunk {i+1} (Page {doc.metadata.get('page')}):\n{doc.page_content}\n\n"
