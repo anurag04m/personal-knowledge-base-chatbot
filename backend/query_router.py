@@ -1,16 +1,14 @@
 """
-query_router.py
-───────────────
-Intercepts user questions about modules/topics and answers them directly
-from the structured sidecar JSON — bypassing FAISS and BM25 entirely.
+query_router.py  (v2)
+──────────────────────
+Intercepts structured questions about modules before RAG runs.
 
-Exposed surface
+Changes from v1
 ───────────────
-    route_query(question, module_topics)
-        → (answer: str | None, routed: bool)
-
-If `routed` is True  → use `answer` directly, skip RAG.
-If `routed` is False → fall through to the normal RAG pipeline.
+• Added "how many modules" / count intent handler  →  fixes Issue 2
+• Extended MODULE_QUERY_RE to catch more phrasings including count queries
+• Added is_followup() helper for the caller to detect vague follow-ups
+• All logic is pure Python (zero LLM calls, zero latency)
 """
 
 from __future__ import annotations
@@ -20,50 +18,100 @@ from difflib import get_close_matches
 from typing import Optional
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Intent detection
+# Intent patterns
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Patterns that signal the user wants module/topic information
 MODULE_QUERY_RE = re.compile(
     r"""
+    # A: "topics in module X", "subjects covered in unit 3"
     (?:
-        (?:topics?|subjects?|contents?|syllabus|units?)   # topic noun
-        [\w\s]*?                                           # optional filler
-        (?:in|of|for|under|covered\s+in)                  # preposition
+        (?:topics?|subjects?|contents?|syllabus|units?|chapters?)
+        [\w\s,]*?
+        (?:in|of|for|under|covered\s+in|inside)
         [\w\s]*?
-        (?:module|unit|chapter)                            # module noun
+        (?:module|unit|chapter)
     )
     |
+    # B: "module X topics/covers/has"
     (?:
-        (?:module|unit|chapter)                            # module first
+        (?:module|unit|chapter)
         [\w\s]*?
-        (?:topics?|subjects?|contents?|cover|include|has|have|contain)
+        (?:topics?|subjects?|contents?|cover|include|has|have|contain|teach)
     )
     |
+    # C: "list / what are the topics of module X"
     (?:
-        (?:list|what\s+(?:are|is)\s+(?:the)?)             # list/what are
+        (?:list|show|give|tell\s+me|what\s+(?:are|is)\s+(?:the)?)
         [\w\s]*?
-        (?:module|unit|chapter)                            # module noun
+        (?:module|unit|chapter)
     )
     |
+    # D: bare "module X" with a number right after
     (?:
         (?:module|unit|chapter)
         [\s\-–]*
-        (?:[IVXivx]{1,6}|\d{1,2})                        # number right after
+        (?:[IVXivx]{1,6}|\d{1,2})
+        \b
+    )
+    |
+    # E: "how many modules", "number of modules", "total modules"
+    (?:
+        (?:how\s+many|number\s+of|total(?:\s+number\s+of)?|count\s+(?:of\s+)?)
+        [\w\s]*?
+        (?:modules?|units?|chapters?)
+    )
+    |
+    # F: "modules in this file/document", "are there X modules"
+    (?:
+        (?:modules?|units?|chapters?)
+        [\w\s]*?
+        (?:in\s+(?:this|the)\s+(?:file|document|pdf|book|notes?)|are\s+there)
     )
     """,
     re.VERBOSE | re.IGNORECASE,
 )
 
-# Extracts the module number from a question (Roman or Arabic)
+# Counts specifically
+COUNT_QUERY_RE = re.compile(
+    r"""
+    (?:how\s+many|number\s+of|total(?:\s+number\s+of)?|count\s+(?:of\s+)?)
+    [\w\s]*?(?:modules?|units?|chapters?)
+    |
+    (?:modules?|units?|chapters?)[\w\s]*?
+    (?:are\s+there|exist|present|available|in\s+(?:this|the)\s+(?:file|document|pdf|book))
+    """,
+    re.VERBOSE | re.IGNORECASE,
+)
+
 MODULE_NUMBER_RE = re.compile(
-    r"(?:module|unit|chapter)[\s\-–]*([IVXivx]{1,6}|\d{1,2})",
+    r"(?:module|unit|chapter)[\s\-–]*([IVXivx]{1,6}|\d{1,2})\b",
+    re.IGNORECASE,
+)
+
+OVERVIEW_RE = re.compile(
+    r"\b(all\s+modules?|overview|list\s+(?:all|the)\s+modules?|"
+    r"modules?\s+(?:are\s+there|covered|available|present)|"
+    r"entire\s+syllabus|full\s+syllabus)\b",
+    re.IGNORECASE,
+)
+
+# Vague follow-up detector (no LLM needed)
+FOLLOWUP_PRONOUN_RE = re.compile(
+    r"^(?:(?:and|also|but|so)\s+)?"
+    r"(?:(?:is|are|was|were|does|do|did|has|have|had|can|could|would|should)\s+)?"
+    r"(?:it|this|that|they|them|these|those|he|she|its)\b",
+    re.IGNORECASE,
+)
+
+FOLLOWUP_SHORT_STARTERS = re.compile(
+    r"^(?:how|why|when|where|what about|tell me more|elaborate|explain more|"
+    r"can you explain|and how|and why|and what)\b",
     re.IGNORECASE,
 )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Key matching helpers
+# Helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
 def roman_to_int(s: str) -> int:
@@ -78,7 +126,6 @@ def roman_to_int(s: str) -> int:
 
 
 def normalise_number(s: str) -> str:
-    """Convert any module number to a canonical comparable form (Arabic int str)."""
     s = s.strip().upper()
     if re.fullmatch(r"[IVXLCDM]+", s):
         return str(roman_to_int(s))
@@ -88,57 +135,72 @@ def normalise_number(s: str) -> str:
         return s
 
 
-def find_module_key(
-    query_number: str,
-    module_topics: dict[str, list[str]],
-) -> Optional[str]:
-    """
-    Find the key in `module_topics` whose embedded number matches
-    `query_number`.  Handles Roman ↔ Arabic mismatch.
-    Returns None if not found.
-    """
+def find_module_key(query_number: str, module_topics: dict) -> Optional[str]:
     target = normalise_number(query_number)
-
     for key in module_topics:
-        # Extract the number embedded in the key (e.g. "Module-II: …" → "II")
         m = re.search(r"Module-([IVXivx]+|\d+)", key, re.IGNORECASE)
         if m and normalise_number(m.group(1)) == target:
             return key
-
-    # Fuzzy fallback using difflib (handles minor typos in the key itself)
     close = get_close_matches(f"Module-{target}", list(module_topics.keys()), n=1, cutoff=0.6)
     return close[0] if close else None
 
 
+def is_followup(question: str) -> bool:
+    """
+    Heuristic: True if the question is a vague follow-up that likely
+    refers to the previous topic rather than introducing a new one.
+    The caller uses this to decide whether to reuse cached context.
+    """
+    q = question.strip()
+    words = q.split()
+    # Very short questions are almost always follow-ups
+    if len(words) <= 4:
+        return True
+    # Starts with a pronoun
+    if FOLLOWUP_PRONOUN_RE.match(q):
+        return True
+    # Starts with a short follow-up phrase
+    if FOLLOWUP_SHORT_STARTERS.match(q) and len(words) <= 8:
+        return True
+    return False
+
+
 # ─────────────────────────────────────────────────────────────────────────────
-# Answer formatter
+# Formatters
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _format_topics_answer(module_key: str, topics: list[str]) -> str:
     if not topics:
         return (
-            f"The knowledge base has an entry for **{module_key}**, but "
-            f"no explicit topic list was found in the document. "
-            f"Try asking a specific question about the module's content."
+            f"**{module_key}** was detected in the document, but no explicit "
+            f"topic list was found under it. Try asking a specific question "
+            f"about the module's content."
         )
-
-    header = f"**{module_key}** covers the following topics:\n"
     bullets = "\n".join(f"  • {t}" for t in topics)
-    return header + bullets
+    return f"**{module_key}** covers the following topics:\n{bullets}"
 
 
-def _format_all_modules_answer(module_topics: dict[str, list[str]]) -> str:
+def _format_count_answer(module_topics: dict) -> str:
+    count = len(module_topics)
+    if count == 0:
+        return "No module structure was detected in the document."
+    keys_list = "\n".join(f"  {i+1}. {k}" for i, k in enumerate(module_topics.keys()))
+    plural = "s" if count != 1 else ""
+    return (
+        f"There {'is' if count == 1 else 'are'} **{count} module{plural}** "
+        f"in this document:\n{keys_list}"
+    )
+
+
+def _format_all_modules_answer(module_topics: dict) -> str:
     if not module_topics:
         return "No module structure was detected in the document."
-
-    lines = ["Here is an overview of all modules:\n"]
+    lines = [f"This document has **{len(module_topics)} module(s)**:\n"]
     for key, topics in module_topics.items():
-        count = len(topics)
-        topic_preview = ", ".join(topics[:3])
-        if count > 3:
-            topic_preview += f" … (+{count - 3} more)"
-        lines.append(f"**{key}** — {topic_preview}" if topics else f"**{key}** — (no topics listed)")
-
+        preview = ", ".join(topics[:3])
+        if len(topics) > 3:
+            preview += f" … (+{len(topics) - 3} more)"
+        lines.append(f"**{key}** — " + (preview if topics else "(no topics listed)"))
     return "\n".join(lines)
 
 
@@ -151,52 +213,39 @@ def route_query(
     module_topics: dict[str, list[str]],
 ) -> tuple[Optional[str], bool]:
     """
-    Attempt to answer the question from structured module data.
-
-    Returns
-    ───────
-    (answer, True)  if the question was handled here.
-    (None,   False) if the question should go to the RAG pipeline.
+    Returns (answer, routed).
+    routed=True  → answer is complete, skip RAG.
+    routed=False → answer is None or a hint; RAG should still run.
     """
     if not module_topics:
         return None, False
 
     q = question.strip()
 
-    # ── Guard: is this even a module-type question? ──────────────────────────
     if not MODULE_QUERY_RE.search(q):
         return None, False
 
-    # ── Check for "all modules" / overview intent ────────────────────────────
-    overview_re = re.compile(
-        r"\b(all\s+modules?|overview|list\s+(?:all|the)\s+modules?|"
-        r"how\s+many\s+modules?|modules?\s+(?:are\s+there|covered))\b",
-        re.IGNORECASE,
-    )
-    if overview_re.search(q):
+    # Count intent — no number in question
+    if COUNT_QUERY_RE.search(q) and not MODULE_NUMBER_RE.search(q):
+        return _format_count_answer(module_topics), True
+
+    # Overview intent
+    if OVERVIEW_RE.search(q) and not MODULE_NUMBER_RE.search(q):
         return _format_all_modules_answer(module_topics), True
 
-    # ── Extract the specific module number ───────────────────────────────────
+    # Specific module
     m = MODULE_NUMBER_RE.search(q)
     if not m:
-        # Question matched the pattern but no number found — let RAG handle
         return None, False
 
-    query_number = m.group(1)
-    matched_key = find_module_key(query_number, module_topics)
-
+    matched_key = find_module_key(m.group(1), module_topics)
     if matched_key is None:
-        # Module not in the knowledge structure → tell user, no RAG fallback
-        # We still return routed=True so the caller can show this clearly
         available = ", ".join(module_topics.keys()) or "none"
-        answer = (
-            f"I could not find **Module-{query_number}** in the structured "
-            f"knowledge base.\n\n"
-            f"Available modules: {available}\n\n"
-            f"I'll now search the document text for related information."
+        hint = (
+            f"**Module-{m.group(1)}** was not found in the structured index.\n"
+            f"Available: {available}\n\n"
+            f"Searching document text for related information…"
         )
-        # Return routed=False so the caller still runs RAG as fallback
-        return answer, False
+        return hint, False
 
-    topics = module_topics[matched_key]
-    return _format_topics_answer(matched_key, topics), True
+    return _format_topics_answer(matched_key, module_topics[matched_key]), True
