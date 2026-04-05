@@ -172,6 +172,9 @@ Guidelines:
 - Do NOT hallucinate specific topic names.
 - Use bullet points when appropriate.
 - Keep answers clear and structured.
+- If the question asks for a definition (e.g., "What is X?"):
+  • Start with a clear one-line definition.
+  • Then optionally add 1–2 concise supporting points.
 
 Context:
 ----------------------
