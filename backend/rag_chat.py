@@ -277,7 +277,7 @@ def ask_llama(context: str, question: str) -> str:
 Use ONLY the information provided in the context.
 Do NOT use outside knowledge.
 
-If the question asks about modules or topics:
+If and ONLY IF the question explicitly asks about modules, units, chapters, or topics (e.g., "list topics", "what does module X cover"):
 
 1. If topics are explicitly listed:
    - Extract and present them clearly using bullet points.
@@ -297,6 +297,10 @@ Guidelines:
 - Do NOT hallucinate specific topic names.
 - Use bullet points when appropriate.
 - Keep answers clear and structured.
+- For general conceptual questions (e.g., "Explain X", "What is X"):
+  • Ignore module/topic structure.
+  • Start with a clear one-line definition.
+  • Then optionally add 1–2 concise supporting points.
 
 Context:
 ----------------------
