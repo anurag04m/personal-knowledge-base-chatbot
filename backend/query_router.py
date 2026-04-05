@@ -152,16 +152,15 @@ def is_followup(question: str) -> bool:
     The caller uses this to decide whether to reuse cached context.
     """
     q = question.strip()
-    words = q.split()
-    # Very short questions are almost always follow-ups
-    if len(words) <= 4:
-        return True
-    # Starts with a pronoun
+
+    # Starts with a pronoun → strong follow-up signal
     if FOLLOWUP_PRONOUN_RE.match(q):
         return True
+
     # Starts with a short follow-up phrase
-    if FOLLOWUP_SHORT_STARTERS.match(q) and len(words) <= 8:
+    if FOLLOWUP_SHORT_STARTERS.match(q):
         return True
+
     return False
 
 
