@@ -357,7 +357,7 @@ Answer:"""
         model="llama3",
         messages=messages,
         stream=True,
-        options={"num_predict": 150}
+        
     )
 
     answer = ""
