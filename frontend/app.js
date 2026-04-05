@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const headerStatus = document.getElementById('header-status');
     const statusText = headerStatus.querySelector('.text');
+    const clearChatBtn = document.getElementById('clear-chat-btn');
     
     // Processing Elements
     const terminalLogs = document.getElementById('terminal-logs');
@@ -140,6 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
         headerStatus.classList.remove('processing');
         headerStatus.classList.add('ready');
         statusText.textContent = 'System Ready';
+        clearChatBtn.classList.remove('hidden'); // Show clear chat button
         switchView('chat');
     };
 
@@ -228,6 +230,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Enter') {
             e.preventDefault();
             handleSend();
+        }
+    });
+
+    clearChatBtn.addEventListener('click', () => {
+        if (confirm('Are you sure you want to clear the chat history?')) {
+            // Keep only the initial bot message
+            const firstMessage = chatHistory.firstElementChild;
+            chatHistory.innerHTML = '';
+            if (firstMessage) {
+                chatHistory.appendChild(firstMessage);
+            }
         }
     });
 });
