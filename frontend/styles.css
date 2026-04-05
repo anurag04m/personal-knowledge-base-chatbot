@@ -104,6 +104,12 @@ body {
     box-shadow: 0 0 8px var(--success-color);
 }
 
+.clear-btn:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: var(--primary-color) !important;
+    color: var(--primary-color) !important;
+}
+
 /* Main Content Views */
 .main-content {
     flex: 1;

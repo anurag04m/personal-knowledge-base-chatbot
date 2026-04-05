@@ -19,9 +19,12 @@
                 <i class="fa-solid fa-brain"></i>
                 <h1>BrainBox AI</h1>
             </div>
-            <div class="status-indicator" id="header-status">
-                <span class="dot"></span>
-                <span class="text">Waiting for documents</span>
+            <div class="header-right" style="display: flex; align-items: center; gap: 15px;">
+                <button id="clear-chat-btn" class="btn clear-btn hidden" style="background: none; border: 1px solid var(--border); color: var(--text-light); padding: 5px 10px; border-radius: 6px; cursor: pointer; transition: all 0.2s;"><i class="fa-solid fa-trash"></i> Clear Chat</button>
+                <div class="status-indicator" id="header-status">
+                    <span class="dot"></span>
+                    <span class="text">Waiting for documents</span>
+                </div>
             </div>
         </header>
 
