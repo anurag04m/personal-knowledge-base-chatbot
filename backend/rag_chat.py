@@ -147,7 +147,17 @@ def retrieve_context(vectorstore, bm25, all_docs, question: str, k: int = 6):
             unique_docs.append(doc)
             seen.add(doc.page_content)
 
-    top_docs = rerank_docs(question, unique_docs)[:k]
+    ranked_docs = rerank_docs(question, unique_docs)
+
+    # If strong top match exists, prioritize it
+    if len(ranked_docs) > 0:
+        best_doc = ranked_docs[0]
+        if len(tokenize(best_doc.page_content)) > 50:
+            top_docs = [best_doc] + ranked_docs[1:3]
+        else:
+            top_docs = ranked_docs[:k]
+    else:
+        top_docs = ranked_docs[:k]
 
     # ── Neighbour expansion ──────────────────────────────────────────────────
     expanded: dict[str, object] = {}
@@ -177,10 +187,13 @@ def retrieve_context(vectorstore, bm25, all_docs, question: str, k: int = 6):
 
     final_docs = filtered_docs
 
-    context = "".join(
-        f"Chunk {i+1} (Page {doc.metadata.get('page')}):\n{doc.page_content}\n\n"
-        for i, doc in enumerate(final_docs)
-    )
+    context = ""
+    for i, doc in enumerate(final_docs):
+        clean_text = re.sub(r"Page\s+\d+", "", doc.page_content)
+        clean_text = re.sub(r"\s+", " ", clean_text)
+
+        context += f"Chunk {i + 1} (Page {doc.metadata.get('page')}):\n{clean_text}\n\n"
+
     pages = list({doc.metadata.get("page") for doc in final_docs
                   if doc.metadata.get("page") is not None})
 
@@ -317,6 +330,7 @@ If and ONLY IF the question explicitly asks about modules, units, chapters, or t
 
 Guidelines:
 - Prefer extraction over inference.
+- Base your answer ONLY on the most relevant parts of the context, ignore unrelated sections.
 - If you infer, keep it minimal and clearly implied by the context.
 - Do NOT hallucinate specific topic names.
 - Use bullet points when appropriate.
