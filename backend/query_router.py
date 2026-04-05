@@ -105,7 +105,7 @@ FOLLOWUP_PRONOUN_RE = re.compile(
 
 FOLLOWUP_SHORT_STARTERS = re.compile(
     r"^(?:how|why|when|where|what about|tell me more|elaborate|explain more|"
-    r"can you explain|and how|and why|and what)\b",
+    r"can you explain|and how|and why|and what|explain it)\b",
     re.IGNORECASE,
 )
 
