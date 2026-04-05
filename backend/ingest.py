@@ -21,11 +21,15 @@ from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 
 # ── NEW: structured knowledge layer ─────────────────────────────────────────
-from module_extractor import extract_and_save
+try:
+    from backend.module_extractor import extract_and_save
+except ImportError:
+    from module_extractor import extract_and_save
 
-DATA_PATH = "data"
-VECTOR_DB_PATH = "vectorstore"
-MODULE_TOPICS_PATH = "module_topics.json"   # sidecar JSON
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_PATH = os.path.join(BASE_DIR, "data")
+VECTOR_DB_PATH = os.path.join(BASE_DIR, "vectorstore")
+MODULE_TOPICS_PATH = os.path.join(BASE_DIR, "module_topics.json")   # sidecar JSON
 
 
 # ─────────────────────────────────────────────────────────────────────────────

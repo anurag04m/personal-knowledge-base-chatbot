@@ -49,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 1. Upload Logic ---
     browseBtn.addEventListener('click', () => {
+        fileInput.value = ''; // Reset before opening dialog to allow same file selection
         fileInput.click();
     });
 
@@ -74,6 +75,10 @@ document.addEventListener('DOMContentLoaded', () => {
             handleFileSelect(fileInput.files[0]);
         }
     });
+
+    // Prevent default drag behaviors on window to avoid accidentally opening PDFs
+    window.addEventListener('dragover', (e) => e.preventDefault());
+    window.addEventListener('drop', (e) => e.preventDefault());
 
     const handleFileSelect = (file) => {
         if(file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) {
@@ -248,13 +253,26 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     clearChatBtn.addEventListener('click', () => {
-        if (confirm('Are you sure you want to clear the chat history?')) {
+        if (confirm('Are you sure you want to clear the chat and upload a new document?')) {
             // Keep only the initial bot message
             const firstMessage = chatHistory.firstElementChild;
             chatHistory.innerHTML = '';
             if (firstMessage) {
                 chatHistory.appendChild(firstMessage);
             }
+            
+            // Reroute to upload page
+            switchView('upload');
+            
+            // Reset status indicator
+            headerStatus.classList.remove('ready', 'processing');
+            statusText.textContent = 'Waiting for documents';
+            
+            // Hide clear chat button
+            clearChatBtn.classList.add('hidden');
+            
+            // Reset file input
+            fileInput.value = '';
         }
     });
 });
