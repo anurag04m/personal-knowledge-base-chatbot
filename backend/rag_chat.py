@@ -353,8 +353,18 @@ Answer:"""
     messages = list(chat_history[-6:])          # last 3 exchanges
     messages.append({"role": "user", "content": prompt})
 
-    response = ollama.chat(model="llama3", messages=messages)
-    answer = response["message"]["content"]
+    response = ollama.chat(
+        model="llama3",
+        messages=messages,
+        stream=True,
+        options={"num_predict": 150}
+    )
+
+    answer = ""
+    for chunk in response:
+        content = chunk["message"]["content"]
+        print(content, end="", flush=True)
+        answer += content
 
     chat_history.append({"role": "user", "content": question})
     chat_history.append({"role": "assistant", "content": answer})
@@ -457,8 +467,8 @@ def main():
             answer += f"\n\n📄 Sources: {', '.join(str(p) for p in sorted(pages))}"
 
         elapsed = time.time() - t_start
-        print(f"\n🤖 Answer ({elapsed:.1f}s):\n")
-        stream_print(answer)
+        print(f"\n\n🤖 Answer ({elapsed:.1f}s):\n")
+        # answer already printed via streaming — do NOT print again
         print("\n" + "─" * 60 + "\n")
 
 
